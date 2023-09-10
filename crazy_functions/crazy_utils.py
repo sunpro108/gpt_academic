@@ -469,14 +469,16 @@ def read_and_clean_pdf_text(fp):
                     '- ', '') for t in text_areas['blocks'] if 'lines' in t]
                 
         ############################## <第 2 步，获取正文主字体> ##################################
-        fsize_statiscs = {}
-        for span in meta_span:
-            if span[1] not in fsize_statiscs: fsize_statiscs[span[1]] = 0
-            fsize_statiscs[span[1]] += span[2]
-        main_fsize = max(fsize_statiscs, key=fsize_statiscs.get)
-        if REMOVE_FOOT_NOTE:
-            give_up_fize_threshold = main_fsize * REMOVE_FOOT_FFSIZE_PERCENT
-
+        try:
+            fsize_statiscs = {}
+            for span in meta_span:
+                if span[1] not in fsize_statiscs: fsize_statiscs[span[1]] = 0
+                fsize_statiscs[span[1]] += span[2]
+            main_fsize = max(fsize_statiscs, key=fsize_statiscs.get)
+            if REMOVE_FOOT_NOTE:
+                give_up_fize_threshold = main_fsize * REMOVE_FOOT_FFSIZE_PERCENT
+        except:
+            raise RuntimeError(f'抱歉, 我们暂时无法解析此PDF文档: {fp}。')
         ############################## <第 3 步，切分和重新整合> ##################################
         mega_sec = []
         sec = []
@@ -591,11 +593,16 @@ def get_files_from_everything(txt, type): # type='.md'
         # 网络的远程文件
         import requests
         from toolbox import get_conf
+        from toolbox import get_log_folder, gen_time_str
         proxies, = get_conf('proxies')
-        r = requests.get(txt, proxies=proxies)
-        with open('./gpt_log/temp'+type, 'wb+') as f: f.write(r.content)
-        project_folder = './gpt_log/'
-        file_manifest = ['./gpt_log/temp'+type]
+        try:
+            r = requests.get(txt, proxies=proxies)
+        except:
+            raise ConnectionRefusedError(f"无法下载资源{txt}，请检查。")
+        path = os.path.join(get_log_folder(plugin_name='web_download'), gen_time_str()+type)
+        with open(path, 'wb+') as f: f.write(r.content)
+        project_folder = get_log_folder(plugin_name='web_download')
+        file_manifest = [path]
     elif txt.endswith(type):
         # 直接给定文件
         file_manifest = [txt]
